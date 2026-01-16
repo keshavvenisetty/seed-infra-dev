@@ -42,6 +42,16 @@ module "vpn" {
     vpc_id = local.vpc_id
 }
 
+module "mongodb" {
+    #Ssource = "../../../terraform-aws-securitygroup"
+    source = "git::https://github.com/keshavvenisetty/terraform-aws-securitygroup.git?ref=main"
+    project = var.project
+    environment = var.environment
+
+    sg_name = "mongodb"
+    sg_description = "for mongodb"
+    vpc_id = local.vpc_id
+}
 
 #bastion accepting connections from laptop
 resource "aws_security_group_rule" "bastion_laptop" {
@@ -101,7 +111,7 @@ resource "aws_security_group_rule" "vpn_943" {
   security_group_id = module.vpn.sg_id
 }
 
-# backend ALB accepting connections from bastion host on port no. 80 
+# backend ALB accepting connections from vpn host on port no. 80 
 resource "aws_security_group_rule" "backend_alb_vpn" {  
   type              = "ingress"   
   from_port         = 80
@@ -110,3 +120,15 @@ resource "aws_security_group_rule" "backend_alb_vpn" {
   source_security_group_id = module.vpn.sg_id
   security_group_id = module.backend_alb.sg_id
 }
+
+#mongodb accepting connection from VPN on ports no. 22, 27017
+resource "aws_security_group_rule" "mongodb_vpn_ssh" {  
+  count = length(var.mongodb_ports_vpn)
+  type              = "ingress"   
+  from_port         = var.mongodb_ports_vpn[count.index]
+  to_port           = var.mongodb_ports_vpn[count.index]
+  protocol          = "tcp"
+  source_security_group_id = module.vpn.sg_id
+  security_group_id = module.mongodb.sg_id
+}
+
